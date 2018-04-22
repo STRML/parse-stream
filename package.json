@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "mocha test/*.js",
-    "build": "rm -rf dist/; flow-remove-types --pretty src/ --out-dir dist/; cp src/index.js dist/index.js.flow"
+    "build": "rm -rf dist/; flow-remove-types --pretty src/ --out-dir dist/; cp src/index.js dist/index.js.flow",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
