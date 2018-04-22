@@ -1,0 +1,32 @@
+{
+  "name": "parse-stream",
+  "version": "1.0.0",
+  "description": "Parse streams of binary data of arbitrary lengths, handling broken/incomplete chunks.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "mocha",
+    "build": "rm -rf dist/; flow-remove-types --pretty src/ --out-dir dist/; cp src/index.js dist/index.js.flow"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/STRML/parse-stream.git"
+  },
+  "keywords": [
+    "stream",
+    "parse",
+    "buffer"
+  ],
+  "author": "Samuel Reed <samuel.trace.reed@gmail.com> (http://strml.net/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/STRML/parse-stream/issues"
+  },
+  "homepage": "https://github.com/STRML/parse-stream#readme",
+  "devDependencies": {
+    "babel-eslint": "^8.2.3",
+    "eslint": "^4.19.1",
+    "eslint-plugin-flowtype": "^2.46.3",
+    "flow-remove-types": "^1.2.3",
+    "mocha": "^5.1.1"
+  }
+}
