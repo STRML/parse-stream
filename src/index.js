@@ -38,9 +38,10 @@ class ParseStream extends stream.Transform {
       continuation.chunks.push(chunk);
       continuation.recvLen += chunk.length;
 
-      if (continuation.recvLen < continuation.desiredLen) {
-        // still more to go, continue, but don't queue up too many timers
-        if (continuation.chunks.length % 20 === 0) return setImmediate(callback);
+      // Not enough data yet?
+      // Special case: incomplete first chunk, so desiredLen is Infinity.
+      // We will fall through, concat, and the while() below will never run, causing us to form another continuation.
+      if (Number.isFinite(continuation.desiredLen) && continuation.recvLen < continuation.desiredLen) {
         return callback();
       }
       // Done coalescing, reset.
@@ -48,15 +49,18 @@ class ParseStream extends stream.Transform {
       continuation.chunks = [];
     }
 
-    // Keep emitting while there's data to emit
     let thisLen = this._fns.getDataGramLength(chunk);
 
+    // Keep emitting while there's data to emit.
     while (thisLen <= chunk.length) {
       const thisSlice = chunk.slice(0, thisLen);
+      // Useful for metrics. TODO better API for this?
       this.emit('chunkLen', thisLen);
       // Design question: Do we even want to parse here or just push the raw buffer,
       // and let the developer pipe into another stream to actually parse it?
       this.push(this._fns.parseDataGram(thisSlice));
+
+      // Queue it up again
       chunk = chunk.slice(thisLen);
       thisLen = this._fns.getDataGramLength(chunk);
     }
@@ -70,10 +74,7 @@ class ParseStream extends stream.Transform {
       this._continuation.recvLen = chunk.length;
     }
 
-    // Signal we're ready for more, but don't allow starving the event loop
-    // In pathological cases, if this stream is fully saturated and we don't use setImmediate,
-    // downstream will never tick which can cause excessive buffering and even segfaults.
-    return setImmediate(callback);
+    return callback();
   }
 }
 
