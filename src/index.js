@@ -1,25 +1,20 @@
 // @flow
 const stream = require('stream');
 
-type ParseStreamOptions = {
-  parseDataGram: (Buffer) => any,
+type ParseStreamOptions = {|
   getDataGramLength: (Buffer) => number,
   // Insanely, the node default typedef exports this as a global
   // I bet that leads to some nasty bugs
-  ...duplexStreamOptions
-};
+  ...$Exact<duplexStreamOptions>
+|};
 
 class ParseStream extends stream.Transform {
   constructor(options: ParseStreamOptions) {
     super(options);
-    if (typeof options.parseDataGram !== 'function') {
-      throw new Error('"parseDataGram: (Buffer) => any" function required!');
-    }
     if (typeof options.getDataGramLength !== 'function') {
       throw new Error('"getDataGramLength: (buffer) => number" function required!');
     }
     this._fns = {
-      parseDataGram: options.parseDataGram,
       getDataGramLength: options.getDataGramLength,
     };
     this._continuation = {
@@ -54,11 +49,7 @@ class ParseStream extends stream.Transform {
     // Keep emitting while there's data to emit.
     while (thisLen <= chunk.length) {
       const thisSlice = chunk.slice(0, thisLen);
-      // Useful for metrics. TODO better API for this?
-      this.emit('chunkLen', thisLen);
-      // Design question: Do we even want to parse here or just push the raw buffer,
-      // and let the developer pipe into another stream to actually parse it?
-      this.push(this._fns.parseDataGram(thisSlice));
+      this.push(thisSlice);
 
       // Queue it up again
       chunk = chunk.slice(thisLen);

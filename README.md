@@ -20,33 +20,41 @@ By defining how to get the length of each message from a stream of binary data, 
 
 ### Usage
 
+> Notice! Version 2.0 no longer has the `parseDataGram` function, and does not emit `'chunkLen'` anymore.
+> Simply pipe your `ParseStream` into another transform stream to replicate the old behavior.
+
 ```js
 const ParseStream = require('../dist/index.js');
+const {Transform} = require('stream');
 
 // Get a socket from somewhere
 const sock = new require('stream').PassThrough();
+
 // Pipe through a ParseStream.
-sock.pipe(new ParseStream({
-  // This defines the transformation from raw buffer data to any type.
-  // The length of the buffer you are passed is defined by getDataGramLength().
-  // arity: (Buffer) => any
-  parseDataGram(buf) {
-    // Slice off first 4 which is length
-    return JSON.parse(buf.slice(4).toString('utf8'));
-  },
-  // This is used to slice up buffers. Knowing your data format, return the
-  // length of the message you expect to parse.
-  // IMPORTANT: You may get a buffer of *any length*! Use Infinity as a
-  // sentinel value to tell ParseStream to get another chunk.
-  getDataGramLength(buf) {
-    if (buf.length < 4) return Infinity;
-    return 4 + buf.readUInt32LE(0);
-  },
-  // Must be set to true if you return objects from parseDataGram.
-  // If you return strings or Buffers, no need.
-  readableObjectMode: true,
-}))
-.on('data', function(result/*: Object */) {
+sock.pipe(
+  new ParseStream({
+    // This is used to slice up buffers. Knowing your data format, return the
+    // length of the message you expect to parse.
+    // IMPORTANT: You may get a buffer of *any length*! Use Infinity as a
+    // sentinel value to tell ParseStream to get another chunk.
+    getDataGramLength(buf) {
+      if (buf.length < 4) return Infinity;
+      return 4 + buf.readUInt32LE(0);
+    },
+  })
+).pipe(
+  new Transform({
+    // Once you have the full datagram, you might want to parse it.
+    //
+    // This defines the transformation from raw buffer data to any type.
+    // The length of the buffer you are passed is defined by getDataGramLength().
+    transform(chunk, encoding, callback) {
+      // Slice off first 4 which is length
+      callback(null, JSON.parse(chunk.slice(4).toString('utf8')));
+    },
+    readableObjectMode: true,
+  })
+).on('data', function(result/*: Object */) {
   console.log(result, typeof result);
 });
 

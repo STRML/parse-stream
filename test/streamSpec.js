@@ -8,17 +8,22 @@ const {Transform} = require('stream');
 describe('ParseStream tests', function() {
 
   function getJSONStream() {
-    return new ParseStream({
-      parseDataGram(buf) {
-        // Slice off first 4 which is length
-        return JSON.parse(buf.slice(4).toString('utf8'));
-      },
+    const parseStream = new ParseStream({
       getDataGramLength(buf) {
         if (buf.length < 4) return Infinity;
         return 4 + buf.readUInt32LE(0);
       },
+    });
+    const JSONTransformStream = new Transform({
+      transform(chunk, encoding, callback) {
+        // Slice off first 4 which is length
+        callback(null, JSON.parse(chunk.slice(4).toString('utf8')));
+      },
       readableObjectMode: true,
     });
+    // Also return original stream
+    // Basically [readableTransform, writableTransform]
+    return [parseStream.pipe(JSONTransformStream), parseStream];
   }
 
   function serializeBuf(obj) {
@@ -30,24 +35,24 @@ describe('ParseStream tests', function() {
   }
 
   it('Deserializes a buffer correctly.', function(done) {
-    const deserializeStream = getJSONStream();
+    const [readableStream] = getJSONStream();
     const testObject = generateObjectOfSize(1000);
-    deserializeStream.on('data', function(data) {
+    readableStream.on('data', function(data) {
       assert.deepEqual(data, testObject);
     });
-    deserializeStream.on('end', done);
-    deserializeStream.end(serializeBuf(testObject));
+    readableStream.on('end', done);
+    readableStream.end(serializeBuf(testObject));
   });
 
   it('Deserializes a large, split buffer correctly.', function(done) {
-    const deserializeStream = getJSONStream();
+    const [readableStream, writableStream] = getJSONStream();
     const largeObject = generateObjectOfSize(100000);
 
     // Add handlers
-    deserializeStream.on('data', function(data) {
+    readableStream.on('data', function(data) {
       assert.deepEqual(data, largeObject);
     });
-    deserializeStream.on('end', done);
+    readableStream.on('end', done);
 
     const largeSerializedBuffer = serializeBuf(largeObject);
 
@@ -57,14 +62,14 @@ describe('ParseStream tests', function() {
     while (len < largeSerializedBuffer.length) {
       next = len + step;
       if (next > largeSerializedBuffer.length) next = largeSerializedBuffer.length;
-      deserializeStream.write(largeSerializedBuffer.slice(len, next));
+      writableStream.write(largeSerializedBuffer.slice(len, next));
       len = next;
     }
-    deserializeStream.end();
+    writableStream.end();
   });
 
   it('Emits multiple data events through deserialize stream', function(done) {
-    const deserializeStream = getJSONStream();
+    const [readableStream, writableStream] = getJSONStream();
     const obj = {foo: 'bar', baz: 'biff'};
     const dataBuf = serializeBuf(obj);
 
@@ -78,8 +83,8 @@ describe('ParseStream tests', function() {
         callback();
       }
     });
-    multiplyingStream.pipe(deserializeStream);
-    deserializeStream.on('data', (data) => {
+    multiplyingStream.pipe(writableStream);
+    readableStream.on('data', (data) => {
       assert.deepEqual(data, obj);
       if (++count === expectedCount) done();
     });
@@ -88,7 +93,7 @@ describe('ParseStream tests', function() {
 
   it('Handles concatted chunks', function(done) {
     const COUNT = 500;
-    const deserializeStream = getJSONStream();
+    const [readableStream, writableStream] = getJSONStream();
 
     const chunks = [];
     for (let i = 0; i < COUNT; i++) {
@@ -96,58 +101,60 @@ describe('ParseStream tests', function() {
     }
 
     let seen = 0;
-    deserializeStream.on('data', function() {
+    readableStream.on('data', function() {
       seen++;
       if (seen > COUNT) throw new Error('Too many data events!');
       if (seen === COUNT) done();
     });
-    deserializeStream.write(Buffer.concat(chunks));
+    writableStream.write(Buffer.concat(chunks));
   });
 
   // Former bug; if a chunk came in and the length was not yet readable (e.g. split on the very end of the datagram),
   // we would get an index out of range error
   it('Handles a message split before the length field', function(done) {
-    const deserializeStream = getJSONStream();
+    const [readableStream, writableStream] = getJSONStream();
     const obj = generateObjectOfSize(100);
     const buf = serializeBuf(obj);
     const buf1 = buf.slice(0, 3);
     const buf2 = buf.slice(3);
 
-    deserializeStream.on('data', function(datum) {
+    readableStream.on('data', function(datum) {
       assert.deepEqual(datum, obj);
       done();
     });
 
-    deserializeStream.write(buf1);
-    deserializeStream.write(buf2);
+    writableStream.write(buf1);
+    writableStream.write(buf2);
   });
 
   it('Handles a message split before the length (byte by byte)', function(done) {
-    const deserializeStream = getJSONStream();
+    const [readableStream, writableStream] = getJSONStream();
     const obj = generateObjectOfSize(100);
     const buf = serializeBuf(obj);
 
-    deserializeStream.on('data', function(datum) {
+    readableStream.on('data', function(datum) {
       assert.deepEqual(datum, obj);
       done();
     });
 
     for (let i = 0; i < buf.length; i++) {
-      deserializeStream.write(buf.slice(i, i + 1));
+      writableStream.write(buf.slice(i, i + 1));
     }
   });
 
-  it('Emits "chunkLen" event', function(done) {
-    const deserializeStream = getJSONStream();
+  it('Pulling chunkLen from readable stream', function(done) {
+    const [, writableStream] = getJSONStream();
     const obj = generateObjectOfSize(100);
     const buf = serializeBuf(obj);
 
-    deserializeStream.on('chunkLen', function(len) {
-      assert.equal(len, buf.length);
+    // This will come off the writable stream, as the readable (deserializeStream)
+    // turns the buffer into an object
+    writableStream.on('data', function(datum) {
+      assert.equal(datum.length, buf.length);
       done();
     });
 
-    deserializeStream.write(buf);
+    writableStream.write(buf);
   });
 });
 
