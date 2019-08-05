@@ -1,6 +1,6 @@
 {
   "name": "parse-stream",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Parse streams of binary data of arbitrary lengths, handling broken/incomplete chunks.",
   "main": "dist/index.js",
   "scripts": {
