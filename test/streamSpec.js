@@ -149,6 +149,33 @@ describe('ParseStream tests', function() {
 
     deserializeStream.write(buf);
   });
+
+  it('Doesn\'t reorder len', function(done) {
+    const deserializeStream = getJSONStream();
+    const objs = [];
+    const bufs = [];
+    for (let i = 0; i < 100; i++) {
+      objs[i] = generateObjectOfSize(i * 10);
+      bufs[i] = serializeBuf(objs[i]);
+    }
+
+    let idx = 0;
+    let lastLen = 0;
+    deserializeStream.on('data', function(datum) {
+      assert.deepEqual(datum, objs[idx]);
+      assert.equal(lastLen, bufs[idx].length);
+      console.log(lastLen);
+      idx++;
+      if (idx === 100) done();
+    });
+    deserializeStream.on('chunkLen', function(len) {
+      lastLen = len;
+    });
+
+    for (const buf of bufs) {
+      deserializeStream.write(buf);
+    }
+  });
 });
 
 // Generate a large object.
