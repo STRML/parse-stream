@@ -5,8 +5,7 @@ type ParseStreamOptions = {|
   getDataGramLength: (Buffer) => number,
   // Insanely, the node default typedef exports this as a global
   // I bet that leads to some nasty bugs
-  ...$Exact<duplexStreamOptions>
-|};
+|} & transformStreamOptions;
 
 class ParseStream extends stream.Transform {
   constructor(options: ParseStreamOptions) {
