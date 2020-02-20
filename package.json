@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "mocha test/*.js",
+    "lint": "eslint .",
     "build": "rm -rf dist/; flow-remove-types --pretty src/ --out-dir dist/; cp src/index.js dist/index.js.flow",
     "prepublishOnly": "npm run build"
   },
@@ -24,10 +25,10 @@
   },
   "homepage": "https://github.com/STRML/parse-stream#readme",
   "devDependencies": {
-    "babel-eslint": "^10.0.2",
-    "eslint": "^6.1.0",
-    "eslint-plugin-flowtype": "^3.13.0",
-    "flow-remove-types": "^2.104.0",
-    "mocha": "^6.2.0"
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.8.0",
+    "eslint-plugin-flowtype": "^4.6.0",
+    "flow-remove-types": "^2.118.0",
+    "mocha": "^7.0.1"
   }
 }

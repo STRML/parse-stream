@@ -24,8 +24,7 @@ sock.pipe(new ParseStream({
   // Must be set to true if you return objects from parseDataGram.
   // If you return strings or Buffers, no need.
   readableObjectMode: true,
-}))
-.on('data', function(result/*: Object */) {
+})).on('data', function(result/*: Object */) {
   console.log(result, typeof result);
 });
 
