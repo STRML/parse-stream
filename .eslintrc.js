@@ -1,31 +1,35 @@
 module.exports = {
-  "env": {
-    "es6": true,
-    "node": true,
+  parser: '@babel/eslint-parser',
+  parserOptions: {
+    requireConfigFile: false,
+    sourceType: 'script',
   },
-  "plugins": [
-    "flowtype",
+  env: {
+    node: true,
+  },
+  plugins: [
+    'flowtype',
   ],
-  "extends": [
-    "eslint:recommended",
-    "plugin:flowtype/recommended",
+  extends: [
+    'eslint:recommended',
+    'plugin:flowtype/recommended',
   ],
-  "rules": {
-    "indent": [
-      "error",
+  rules: {
+    'indent': [
+      'error',
       2
     ],
-    "linebreak-style": [
-      "error",
-      "unix"
+    'linebreak-style': [
+      'error',
+      'unix'
     ],
-    "quotes": [
-      "error",
-      "single"
+    'quotes': [
+      'error',
+      'single'
     ],
-    "semi": [
-      "error",
-      "always"
+    'semi': [
+      'error',
+      'always'
     ]
   }
 };
