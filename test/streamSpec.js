@@ -147,7 +147,7 @@ describe('ParseStream tests', function() {
     const obj = generateObjectOfSize(100);
     const buf = serializeBuf(obj);
 
-    // This will come off the writable stream, as the readable (deserializeStream)
+    // This will come off the writable stream, as the readable (writableStream)
     // turns the buffer into an object
     writableStream.on('data', function(datum) {
       assert.equal(datum.length, buf.length);
@@ -155,6 +155,34 @@ describe('ParseStream tests', function() {
     });
 
     writableStream.write(buf);
+  });
+
+  it('Doesn\'t reorder len', function(done) {
+    const [readableStream, writableStream] = getJSONStream();
+    const objs = [];
+    const bufs = [];
+    for (let i = 0; i < 100; i++) {
+      objs[i] = generateObjectOfSize(i * 10);
+      bufs[i] = serializeBuf(objs[i]);
+    }
+
+    let idx = 0;
+    let lastLen = 0;
+    writableStream.on('data', function(datum) {
+      lastLen = datum.length;
+      assert.equal(lastLen, bufs[idx].length);
+      idx++;
+      if (idx === 100) done();
+    });
+
+    readableStream.on('data', function(datum) {
+      assert.deepEqual(datum, objs[idx]);
+    });
+
+
+    for (const buf of bufs) {
+      writableStream.write(buf);
+    }
   });
 });
 
